@@ -1,8 +1,6 @@
 ## Macro Problem Set 1 for Ben Moll’s Part
 ## Ed Manuel, 13 November 2023
 
-Hi 
-
 rm(list=ls())
 
 library(tidyverse)
