@@ -4,6 +4,7 @@ authors: ["Alexander Newton","Ed Manuel"]
 format: html
 editor: visual
 code-fold: true
+toc: true
 ---
 
 ```{r}
