@@ -149,13 +149,6 @@ quantile_function<-cbind(quantiles_q3,wtd.quantile(df$NETWORTH, q=quantiles_q3, 
   rename(quantile=quantiles_q3)%>%
   rename(value=V2)
 
-quantile_function2<-df%>%
-  arrange((NETWORTH))%>%
-  mutate(cum_sum = cumsum(WGT))%>%
-  mutate(WGT_TOTAL = sum(WGT))%>%
-  mutate(quantile=cum_sum/WGT_TOTAL)%>%
-  select(quantile,NETWORTH)
-
 # Create the plot
 quantile_plot<-quantile_function%>%
   filter(quantile<0.95)%>%
@@ -164,6 +157,14 @@ quantile_plot<-quantile_function%>%
   geom_line()+
   theme_bw()
 
+# Alternate way to do all this manually by summing weights
+quantile_function2<-df%>%
+  arrange((NETWORTH))%>%
+  mutate(cum_sum = cumsum(WGT))%>%
+  mutate(WGT_TOTAL = sum(WGT))%>%
+  mutate(quantile=cum_sum/WGT_TOTAL)%>%
+  select(quantile,NETWORTH)
+
 quantile_plot2<-quantile_function2%>%
   filter(quantile<0.95)%>%
   filter(quantile>0.05)%>%
@@ -171,12 +172,14 @@ quantile_plot2<-quantile_function2%>%
   geom_line()+
   theme_bw()
 
+# They look pretty similar 
 quantile_plot
 quantile_plot2
 
 ## Q4: Plot the Lorenz curve
 library(REAT)
 
+# That was easy
 lorenz(df$NETWORTH, weighting = df$WGT, z = NULL, na.rm = TRUE,
        lcx = "Income share", lcy = "Population share",
        lctitle = "Lorenz curve")
@@ -189,15 +192,17 @@ q_90<- wtd.quantile(df$NETWORTH, q=0.90, weight = df$WGT)
 
 wealth_top10<-df%>%
   filter(NETWORTH>q_90)%>%
+  # Construct CDF function by summing mass below each point
   arrange((NETWORTH))%>%
   mutate(cum_sum = cumsum(WGT))%>%
   mutate(WGT_TOTAL = sum(WGT))%>%
   mutate(F=cum_sum/WGT_TOTAL)%>%
+  # Construct the variables we need
   mutate(F_adj = log(1-F))%>%
   filter(NETWORTH>0)%>%
   mutate(log_w = log(NETWORTH))
 
-
+# Make plot
 plot_q5<-wealth_top10%>%
   filter(F<1)%>%
   ggplot(aes(x=log_w,y=F_adj))+
