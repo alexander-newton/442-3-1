@@ -1,10 +1,16 @@
-## Macro Problem Set 1 for Ben Moll’s Part
-## Ed Manuel, 13 November 2023
+---
+title: "EC442 Part 3 Problem Set 1: SCF"
+authors: ["Alexander Newton","Ed Manuel"]
+format: html
+editor: visual
+code-fold: true
+---
 
-rm(list=ls())
+```{r}
+#| code-summary: "Initialise"
+#| output: false
 
 library(tidyverse)
-
 library(lodown)
 library(survey)
 library(mitools)
@@ -12,30 +18,25 @@ library(convey)
 library(reldist)    
 library(REAT)
 
-
-# Approach 1 --------------------------------------------------------------
-
-# This approach uses the raw survey and weights data provided by the Fed
-
-# Follows here: http://asdfree.com/survey-of-consumer-finances-scf.html 
-
-
+# if data not already downloaded
 
 # examine all available SCF microdata files
- scf_cat <-
-   get_catalog( "scf" ,
-                output_dir = file.path( path.expand( "~" ) , "SCF" ) )
+#  scf_cat <-
+#    get_catalog( "scf" ,
+#                 output_dir = file.path( path.expand( "~" ) , "SCF" ) )
+# 
+# # # Download 2022 SCF to laptop
+#  scf_cat <- subset( scf_cat , year == 2022 )
+#  scf_cat <- lodown( "scf" , scf_cat )
 
-# # Download 2022 SCF to laptop
- # scf_cat <- subset( scf_cat , year == 2022 )
- # scf_cat <- lodown( "scf" , scf_cat )
-
-# read in the files 
-# this looks like all the actual data
 scf_imp <- readRDS( file.path( path.expand( "~" ) , "SCF" , "scf 2022.rds" ) )
-
-# this looks like the weights
 scf_rw <- readRDS( file.path( path.expand( "~" ) , "SCF" , "scf 2022 rw.rds" ) )
+
+
+
+```
+
+```{r}
 
 # I think this basically re-weights the survey and saves as complicated object
 scf_design <- 
@@ -64,10 +65,24 @@ scf_MIcombine( with( scf_design , svygini( ~ networth ) ) )
 
 
 # Download the files
-download.file("https://www.federalreserve.gov/econres/files/scfp2022excel.zip", "SCFP2022.zip")
-unzip("SCFP2022.zip")
+# download.file("https://www.federalreserve.gov/econres/files/scfp2022excel.zip", "SCFP2022.zip")
+# unzip("SCFP2022.zip")
 df <- read.csv("SCFP2022.csv")%>%
   select(NETWORTH,WGT,OCCAT1)
+
+
+
+
+
+
+```
+
+## Constructing a dataset
+
+## Histograms of wealth
+
+```{r}
+
 
 ## Q1: Make two histograms for: (a) the level of wealth (only plot up to the 95th percentile)
 
@@ -96,7 +111,11 @@ hist2<-df%>%
   labs(x = "Log Net Worth Histogram")
 
 hist2
+```
 
+## Wealth shares
+
+```{r}
 ## Q2: Make a table with the wealth shares of 
 # (a) the bottom 50 percent, 
 # (b) the next 40 percent, 
@@ -141,7 +160,11 @@ ent_share [[i]]= nrow(ent_sample)/nrow(wealth_sample)
 
 # Construct table 
 table_shares <- cbind(unlist(wealth_share),unlist(ent_share))
+```
 
+## The quantile function
+
+```{r}
 ## Q3: Plot the quantile function
 
 # Choose number of points to fit to 
@@ -181,6 +204,12 @@ quantile_plot
 quantile_plot2
 
 
+```
+
+## The Lorenz curve
+
+```{r}
+
 
 ## Q4: Plot the Lorenz curve
 
@@ -189,6 +218,11 @@ lorenz(df$NETWORTH, weighting = df$WGT, z = NULL, na.rm = TRUE,
        lcx = "Income share", lcy = "Population share",
        lctitle = "Lorenz curve")
 
+```
+
+## Entrepreneurs
+
+```{r}
 ## Q5:For the wealth above the 90th percentile, plot log(1 − F (w)) against log w 
 # where F (w) is the cumulative distribution function of wealth w.
 
@@ -215,5 +249,4 @@ plot_q5<-wealth_top10%>%
   theme_bw()
 
 plot_q5
-
-
+```
