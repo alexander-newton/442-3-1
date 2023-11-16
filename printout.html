@@ -84,6 +84,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#wealth-shares" id="toc-wealth-shares" class="nav-link" data-scroll-target="#wealth-shares">Wealth shares</a></li>
   <li><a href="#the-quantile-function" id="toc-the-quantile-function" class="nav-link" data-scroll-target="#the-quantile-function">The quantile function</a></li>
   <li><a href="#the-lorenz-curve" id="toc-the-lorenz-curve" class="nav-link" data-scroll-target="#the-lorenz-curve">The Lorenz curve</a></li>
+  <li><a href="#power-law-distribution" id="toc-power-law-distribution" class="nav-link" data-scroll-target="#power-law-distribution">Power law distribution</a></li>
   <li><a href="#entrepreneurs" id="toc-entrepreneurs" class="nav-link" data-scroll-target="#entrepreneurs">Entrepreneurs</a></li>
   </ul>
 </nav>
@@ -147,7 +148,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>scf_design <span class="ot">&lt;-</span> </span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">svrepdesign</span>( </span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">weights =</span> <span class="sc">~</span>wgt , </span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">repweights =</span> scf_rw[ , <span class="sc">-</span><span class="dv">1</span> ] , </span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">repweights =</span> scf_rw[ , <span class="sc">-</span><span class="dv">1</span> ] , <span class="co">#don't include yy1 column</span></span>
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> <span class="fu">imputationList</span>( scf_imp ) , </span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">scale =</span> <span class="dv">1</span> ,</span>
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">rscales =</span> <span class="fu">rep</span>( <span class="dv">1</span> <span class="sc">/</span> <span class="dv">998</span> , <span class="dv">999</span> ) ,</span>
@@ -182,7 +183,7 @@ networth 0.8299718 0.003921117</code></pre>
 <span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="co"># download.file("https://www.federalreserve.gov/econres/files/scfp2022excel.zip", "SCFP2022.zip")</span></span>
 <span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="co"># unzip("SCFP2022.zip")</span></span>
 <span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"SCFP2022.csv"</span>)<span class="sc">%&gt;%</span></span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(NETWORTH,WGT,OCCAT1)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(NETWORTH,WGT,OCCAT1) <span class="co">#WGT here is just the sampling weight, this concatenates each of the implicates with eachother</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <section id="constructing-a-dataset" class="level2">
@@ -190,6 +191,9 @@ networth 0.8299718 0.003921117</code></pre>
 </section>
 <section id="histograms-of-wealth" class="level2">
 <h2 class="anchored" data-anchor-id="histograms-of-wealth">Histograms of wealth</h2>
+<blockquote class="blockquote">
+<p>Make two histograms for: (a) the level of wealth (only plot up to the 95th percentile, otherwise the graph will be hard to read), (b) the logarithm of wealth.</p>
+</blockquote>
 <div class="cell">
 <details>
 <summary>Code</summary>
@@ -209,7 +213,7 @@ networth 0.8299718 0.003921117</code></pre>
 <span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>hist1</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
-<p><img src="printout_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid" width="672"></p>
+<p><img src="printout_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid" width="672"></p>
 </div>
 <details>
 <summary>Code</summary>
@@ -227,12 +231,15 @@ networth 0.8299718 0.003921117</code></pre>
 <span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>hist2</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
-<p><img src="printout_files/figure-html/unnamed-chunk-3-2.png" class="img-fluid" width="672"></p>
+<p><img src="printout_files/figure-html/unnamed-chunk-4-2.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 </section>
 <section id="wealth-shares" class="level2">
 <h2 class="anchored" data-anchor-id="wealth-shares">Wealth shares</h2>
+<blockquote class="blockquote">
+<p>Make a table with the wealth shares of (a) the bottom 50 percent, (b) the next 40 percent, (c) the next 9 percent, (d) the top 1 percent, (e) the top 0.1 percent of households in the sample. At the end, your answers to question 2 and 6 can be summarized in a table like Table 1 below.</p>
+</blockquote>
 <div class="cell">
 <details>
 <summary>Code</summary>
@@ -285,6 +292,9 @@ networth 0.8299718 0.003921117</code></pre>
 </section>
 <section id="the-quantile-function" class="level2">
 <h2 class="anchored" data-anchor-id="the-quantile-function">The quantile function</h2>
+<blockquote class="blockquote">
+<p>Plot the quantile function (you will likely have to cut the y-axis to make it readable due to the “dwarves and giants” feature).</p>
+</blockquote>
 <div class="cell">
 <details>
 <summary>Code</summary>
@@ -333,19 +343,22 @@ networth 0.8299718 0.003921117</code></pre>
 <span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a>quantile_plot</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
-<p><img src="printout_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid" width="672"></p>
+<p><img src="printout_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid" width="672"></p>
 </div>
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>quantile_plot2</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
-<p><img src="printout_files/figure-html/unnamed-chunk-5-2.png" class="img-fluid" width="672"></p>
+<p><img src="printout_files/figure-html/unnamed-chunk-6-2.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 </section>
 <section id="the-lorenz-curve" class="level2">
 <h2 class="anchored" data-anchor-id="the-lorenz-curve">The Lorenz curve</h2>
+<blockquote class="blockquote">
+<p>Plot the Lorenz curve.</p>
+</blockquote>
 <div class="cell">
 <details>
 <summary>Code</summary>
@@ -357,12 +370,15 @@ networth 0.8299718 0.003921117</code></pre>
 <span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>       <span class="at">lctitle =</span> <span class="st">"Lorenz curve"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
-<p><img src="printout_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid" width="672"></p>
+<p><img src="printout_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 </section>
-<section id="entrepreneurs" class="level2">
-<h2 class="anchored" data-anchor-id="entrepreneurs">Entrepreneurs</h2>
+<section id="power-law-distribution" class="level2">
+<h2 class="anchored" data-anchor-id="power-law-distribution">Power law distribution</h2>
+<blockquote class="blockquote">
+<p>For the wealth above the 90th percentile, plot log(1 − F (w)) against log w where F (w) is the cumulative distribution function of wealth w. Figure 1 plots the corresponding graph for the 2007 SCF. If the distribution had an exact Pareto tail, this should be a straight line. The plot you will generate will most likely have the feature that the Pareto relationship breaks down for high enough wealth levels. Why?</p>
+</blockquote>
 <div class="cell">
 <details>
 <summary>Code</summary>
@@ -394,9 +410,15 @@ networth 0.8299718 0.003921117</code></pre>
 <span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a>plot_q5</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
-<p><img src="printout_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid" width="672"></p>
+<p><img src="printout_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
+</section>
+<section id="entrepreneurs" class="level2">
+<h2 class="anchored" data-anchor-id="entrepreneurs">Entrepreneurs</h2>
+<blockquote class="blockquote">
+<p>Let’s assess what fraction of people in different parts of the wealth distribution are “en- trepreneurs” broadly defined. To this end use the variable X4106. For each of the wealth groups in question 2, calculate the fraction of people who are “entrepreneurs”. Add your answer to Table 1.</p>
+</blockquote>
 </section>
 
 </main>

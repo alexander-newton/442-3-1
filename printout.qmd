@@ -43,7 +43,7 @@ scf_rw <- readRDS( file.path( path.expand( "~" ) , "SCF" , "scf 2022 rw.rds" ) )
 scf_design <- 
   svrepdesign( 
     weights = ~wgt , 
-    repweights = scf_rw[ , -1 ] , 
+    repweights = scf_rw[ , -1 ] , #don't include yy1 column
     data = imputationList( scf_imp ) , 
     scale = 1 ,
     rscales = rep( 1 / 998 , 999 ) ,
@@ -69,7 +69,7 @@ scf_MIcombine( with( scf_design , svygini( ~ networth ) ) )
 # download.file("https://www.federalreserve.gov/econres/files/scfp2022excel.zip", "SCFP2022.zip")
 # unzip("SCFP2022.zip")
 df <- read.csv("SCFP2022.csv")%>%
-  select(NETWORTH,WGT,OCCAT1)
+  select(NETWORTH,WGT,OCCAT1) #WGT here is just the sampling weight, this concatenates each of the implicates with eachother
 
 
 
@@ -80,7 +80,13 @@ df <- read.csv("SCFP2022.csv")%>%
 
 ## Constructing a dataset
 
+```{r}
+
+```
+
 ## Histograms of wealth
+
+> Make two histograms for: (a) the level of wealth (only plot up to the 95th percentile, otherwise the graph will be hard to read), (b) the logarithm of wealth.
 
 ```{r}
 
@@ -115,6 +121,8 @@ hist2
 ```
 
 ## Wealth shares
+
+> Make a table with the wealth shares of (a) the bottom 50 percent, (b) the next 40 percent, (c) the next 9 percent, (d) the top 1 percent, (e) the top 0.1 percent of households in the sample. At the end, your answers to question 2 and 6 can be summarized in a table like Table 1 below.
 
 ```{r}
 ## Q2: Make a table with the wealth shares of 
@@ -165,6 +173,8 @@ table_shares <- cbind(unlist(wealth_share),unlist(ent_share))
 
 ## The quantile function
 
+> Plot the quantile function (you will likely have to cut the y-axis to make it readable due to the "dwarves and giants" feature).
+
 ```{r}
 ## Q3: Plot the quantile function
 
@@ -209,6 +219,8 @@ quantile_plot2
 
 ## The Lorenz curve
 
+> Plot the Lorenz curve.
+
 ```{r}
 
 
@@ -221,7 +233,9 @@ lorenz(df$NETWORTH, weighting = df$WGT, z = NULL, na.rm = TRUE,
 
 ```
 
-## Entrepreneurs
+## Power law distribution
+
+> For the wealth above the 90th percentile, plot log(1 − F (w)) against log w where F (w) is the cumulative distribution function of wealth w. Figure 1 plots the corresponding graph for the 2007 SCF. If the distribution had an exact Pareto tail, this should be a straight line. The plot you will generate will most likely have the feature that the Pareto relationship breaks down for high enough wealth levels. Why?
 
 ```{r}
 ## Q5:For the wealth above the 90th percentile, plot log(1 − F (w)) against log w 
@@ -251,3 +265,7 @@ plot_q5<-wealth_top10%>%
 
 plot_q5
 ```
+
+## Entrepreneurs
+
+> Let's assess what fraction of people in different parts of the wealth distribution are "en- trepreneurs" broadly defined. To this end use the variable X4106. For each of the wealth groups in question 2, calculate the fraction of people who are "entrepreneurs". Add your answer to Table 1.
