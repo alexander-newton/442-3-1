@@ -5,7 +5,10 @@ format: html
 editor: visual
 code-fold: true
 toc: true
+self-contained: true
 ---
+
+[The repository for this project can be found on Github](https://github.com/alexander-newton/442-3-1).
 
 ```{r}
 #| code-summary: "Initialise"
@@ -51,6 +54,7 @@ unzip("SCFP2022.zip")
 
 download.file("https://www.federalreserve.gov/econres/files/scf2022s.zip",
               "SCF2022s.zip")
+
 download.file("https://www.federalreserve.gov/econres/files/2022map.txt",
               "2022map.txt")
 headers <- read.delim("2022map.txt", header = 0, sep = "\t")
@@ -66,6 +70,8 @@ unzip("SCF2022s.zip")
 We used the summary dataset provided by the Federal Reserve as a benchmark throughout these solutions.
 
 ```{r}
+#| output: false
+#| eval: false
 # {# Approach 2 --------------------------------------------------------------}
 
 
@@ -79,9 +85,10 @@ We used the summary dataset provided by the Federal Reserve as a benchmark throu
   #select(NETWORTH,WGT,OCCAT1,FARMBUS) #WGT here is just the sampling weight, this concatenates each of the implicates with eachother
 ```
 
-We construct our dataset starting from the [STATA files](https://www.federalreserve.gov/econres/files/scf2022s.zip) provided.
+We construct our dataset starting from the [STATA files](https://www.federalreserve.gov/econres/files/scf2022s.zip) provided. We tried to match the FRB's summary statistics as closely as possible.
 
 ```{r}
+#| code-summary: "Constructing the dataset"
 df2 <- haven::read_dta("p22i6.dta")
 
 df <- transmute(
@@ -593,15 +600,3 @@ plot_q5<-wealth_top10%>%
 
 plot_q5
 ```
-
-## The problem with surveys {.appendix}
-
-### Representativeness {.appendix}
-
-### Missingness {.appendix}
-
-### Respondent burden {.appendix}
-
-### Bad respondents {.appendix}
-
-### 
