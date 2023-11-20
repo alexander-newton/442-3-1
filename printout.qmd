@@ -11,68 +11,51 @@ toc: true
 #| code-summary: "Initialise"
 #| output: false
 
-library(tidyverse)
+library(dplyr)
+library(magrittr)
+library(ggplot2)
 library(lodown)
 library(survey)
 library(mitools)
 library(convey)
 library(reldist)    
 library(REAT)
+```
+
+```{r}
+#| code-summary: "Download datasets"
+#| output: false
+#| eval: false
+
 
 # if data not already downloaded
 
 # examine all available SCF microdata files
-#  scf_cat <-
-#    get_catalog( "scf" ,
-#                 output_dir = file.path( path.expand( "~" ) , "SCF" ) )
-# 
-# # # Download 2022 SCF to laptop
-#  scf_cat <- subset( scf_cat , year == 2022 )
-#  scf_cat <- lodown( "scf" , scf_cat )
+scf_cat <-
+  get_catalog("scf" ,
+              output_dir = file.path(path.expand("~") , "SCF"))
+#
+# Download 2022 SCF to laptop
+scf_cat <- subset(scf_cat , year == 2022)
+scf_cat <- lodown("scf" , scf_cat)
 
-scf_imp <- readRDS( file.path( path.expand( "~" ) , "SCF" , "scf 2022.rds" ) )
-scf_rw <- readRDS( file.path( path.expand( "~" ) , "SCF" , "scf 2022 rw.rds" ) )
-
-
-
-```
-
-```{r}
-
-# I think this basically re-weights the survey and saves as complicated object
-scf_design <- 
-  svrepdesign( 
-    weights = ~wgt , 
-    repweights = scf_rw[ , -1 ] , 
-    data = imputationList( scf_imp ) , 
-    scale = 1 ,
-    rscales = rep( 1 / 998 , 999 ) ,
-    mse = FALSE ,
-    type = "other" ,
-    combined.weights = TRUE
-  )
-
-scf_design$designs <- lapply( scf_design$designs , convey_prep )
-
-scf_MIcombine( with( scf_design , svygini( ~ networth ) ) )
-
-# Approach 2 --------------------------------------------------------------
-
-# This approach uses the "Summary Extract Public Data" provided by the Fed and used in their own publications
-# Note this dataset has already constructed the NETWORTH variable we're interested in
-
-# Following here: https://medium.com/@candace_60118/survey-of-consumer-finances-scf-analyzing-weighted-data-in-r-4e4789112c8a
-# Also this: https://bookdown.org/jimr1603/Intermediate_R_-_R_for_Survey_Analysis/survey-specific-functions.html 
 
 
 # Download the files
-# download.file("https://www.federalreserve.gov/econres/files/scfp2022excel.zip", "SCFP2022.zip")
-# unzip("SCFP2022.zip")
-df <- read.csv("SCFP2022.csv")%>%
-  select(NETWORTH,WGT,OCCAT1)
+download.file(
+  "https://www.federalreserve.gov/econres/files/scfp2022excel.zip",
+  "SCFP2022.zip"
+)
+unzip("SCFP2022.zip")
 
 
+download.file("https://www.federalreserve.gov/econres/files/scf2022s.zip",
+              "SCF2022s.zip")
+download.file("https://www.federalreserve.gov/econres/files/2022map.txt",
+              "2022map.txt")
+headers <- read.delim("2022map.txt", header = 0, sep = "\t")
 
+unzip("SCF2022s.zip")
 
 
 
@@ -80,7 +63,316 @@ df <- read.csv("SCFP2022.csv")%>%
 
 ## Constructing a dataset
 
+We used the summary dataset provided by the Federal Reserve as a benchmark throughout these solutions.
+
+```{r}
+# {# Approach 2 --------------------------------------------------------------}
+
+
+# This approach uses the "Summary Extract Public Data" provided by the Fed and used in their own publications
+# Note this dataset has already constructed the NETWORTH variable we're interested in
+
+# Following here: https://medium.com/@candace_60118/survey-of-consumer-finances-scf-analyzing-weighted-data-in-r-4e4789112c8a
+# Also this: https://bookdown.org/jimr1603/Intermediate_R_-_R_for_Survey_Analysis/survey-specific-functions.html 
+
+#df <- read.csv("SCFP2022.csv")%>%
+  #select(NETWORTH,WGT,OCCAT1,FARMBUS) #WGT here is just the sampling weight, this concatenates each of the implicates with eachother
+```
+
+We construct our dataset starting from the [STATA files](https://www.federalreserve.gov/econres/files/scf2022s.zip) provided.
+
+```{r}
+df2 <- haven::read_dta("p22i6.dta")
+
+df <- transmute(
+  df2,
+  WGT = x42001/5,
+  cds = pmax(0, x3721),
+  checking = pmax(0, x3506) * (x3507 == 5) + pmax(0, x3510) * (x3511 == 5) + pmax(0, x3514) * (x3515 == 5) + pmax(0, x3518) * (x3519 == 5) + pmax(0, x3522) * (x3523 == 5) + pmax(0, x3526) * (x3527 == 5) + pmax(0, x3529) * (x3527 == 5),
+  mmda = pmax(0, x3506 * (x3507 == 1) * (11 <= x9113 &
+                                           x9113 <= 13)) + pmax(0, x3510 * (x3511 == 1) * (11 <= x9114 &
+                                                                                             x9114 <= 13)) + pmax(0, x3514 * (x3515 == 1) * (11 <= x9115 &
+                                                                                                                                               x9115 <= 13)) + pmax(0, x3518 * (x3519 == 1) * (11 <= x9116 &
+                                                                                                                                                                                                 x9116 <= 13)) + pmax(0, x3522 * (x3523 == 1) * (11 <= x9117 &
+                                                                                                                                                                                                                                                   x9117 <= 13)) + pmax(0, x3526 * (x3527 == 1) * (11 <= x9118 &
+                                                                                                                                                                                                                                                                                                     x9118 <= 13)) + pmax(0, x3529 * (x3527 == 1) * (11 <= x9118 &
+                                                                                                                                                                                                                                                                                                                                                       x9118 <= 13)) + pmax(0, x3730 * (x3732 %in% c(4, 30)) * (x9259 >= 11 &
+                                                                                                                                                                                                                                                                                                                                                                                                                  x9259 <= 13)) + pmax(0, x3736 * (x3738 %in% c(4, 30)) * (x9260 >= 11 &
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                             x9260 <= 13)) + pmax(0, x3742 * (x3744 %in% c(4, 30)) * (x9261 >= 11 &
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        x9261 <= 13)) + pmax(0, x3748 * (x3750 %in% c(4, 30)) * (x9262 >= 11 &
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   x9262 <= 13)) + pmax(0, x3754 * (x3756 %in% c(4, 30)) * (x9263 >= 11 &
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              x9263 <= 13)) + pmax(0, x3760 * (x3762 %in% c(4, 30)) * (x9264 >= 11 &
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         x9264 <= 13)) + pmax(0, x3765 * (x3762 %in% c(4, 30)) * (x9264 >= 11 &
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    x9264 <= 13)),
+  mmmf = pmax(0, x3506 * (x3507 == 1) * ((x9113 < 11) |
+                                           (x9113 > 13))) + pmax(0, x3510 * (x3511 == 1) * ((x9114 < 11) |
+                                                                                              (x9114 > 13))) + pmax(0, x3514 * (x3515 == 1) * ((x9115 < 11) |
+                                                                                                                                                 (x9115 > 13))) + pmax(0, x3518 * (x3519 == 1) * ((x9116 < 11) |
+                                                                                                                                                                                                    (x9116 > 13))) + pmax(0, x3522 * (x3523 == 1) * ((x9117 < 11) |
+                                                                                                                                                                                                                                                       (x9117 > 13))) + pmax(0, x3526 * (x3527 == 1) * ((x9118 < 11) |
+                                                                                                                                                                                                                                                                                                          (x9118 > 13))) + pmax(0, x3529 * (x3527 == 1) * ((x9118 < 11) |
+                                                                                                                                                                                                                                                                                                                                                             (x9118 > 13))) + pmax(0, x3730 * (x3732 %in% c(4, 30)) * ((x9259 < 11) |
+                                                                                                                                                                                                                                                                                                                                                                                                                         (x9259 > 13))) + pmax(0, x3736 * (x3738 %in% c(4, 30)) * ((x9260 < 11) |
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     (x9260 > 13))) + pmax(0, x3742 * (x3744 %in% c(4, 30)) * ((x9261 < 11) |
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 (x9261 > 13))) + pmax(0, x3748 * (x3750 %in% c(4, 30)) * ((x9262 < 11) |
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             (x9262 > 13))) + pmax(0, x3754 * (x3756 %in% c(4, 30)) * ((x9263 < 11) |
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         (x9263 > 13))) + pmax(0, x3760 * (x3762 %in% c(4, 30)) * ((x9264 < 11) |
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     (x9264 > 13))) + pmax(0, x3765 * (x3762 %in% c(4, 30)) * ((x9264 < 11) |
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 (x9264 > 13))),
+  mma = mmda + mmmf,
+  call = pmax(0, x3930),
+  prepaid = pmax(0, x7596),
+  saving = pmax(-1, x3730 * !(x3732 %in% c(4, 30))) + pmax(0, x3736 * !(x3738 %in% c(4, 30))) + pmax(0, x3742 * !(x3744 %in% c(4, 30))) + pmax(0, x3748 * !(x3750 %in% c(4, 30))) + pmax(0, x3754 * !(x3756 %in% c(4, 30))) + pmax(0, x3760 * !(x3762 %in% c(4, 30))) + pmax(0, x3765),
+  liq = checking + saving + mma + call + prepaid,
+  stmutf = pmax(0, x3821 * x3822),
+  tfbmutf = pmax(0, x3823 * x3824),
+  gbmutf = pmax(0, x3825 * x3826),
+  obmutf = pmax(0, x3827 * x3828),
+  comutf = pmax(0, x3829 * x3830),
+  omutf = pmax(0, x7785 * x7787),
+  nmmf = pmax(0, stmutf + tfbmutf + gbmutf + obmutf + comutf + omutf),
+  stocks = pmax(0, x3915),
+  bond = x3910 + x3906 + x3908 + x7634 + x7633,
+  irakh = x6551 + x6552 + x6553++x6554 + x6559 + x6560 + x6561 + x6562 + x6567 +
+    x6568 + x6569 + x6570,
+  futpen = pmax(0, x5604) + pmax(0, x5612) + pmax(0, x5620) +
+    pmax(0, x5628),
+  currpen = x6462 + x6467 + x6472 + x6477 + x6957,
+  mutual_funds = x3822 + x3824 + x3826 + x3828 + x3830 + x7787,
+  savbnd = x3902,
+  cashli = pmax(0, x4006),
+  other_bonds = x7635 + x7637 + x7636 + x7633 + x7638 + x7639,
+  plc_stock = x3915 + x3930 - x3932,
+  annuit = pmax(0, x6577),
+  trusts = pmax(0, x6587),
+  othma = annuit + trusts,
+  othfin = pmax(
+    0,
+    x4018 + x4022 * (x4020 %in% c(
+      61, 62, 63, 64, 65, 66, 71, 72, 73, 74, 77, 80, 81,-7
+    )) + x4026 * (x4024 %in% c(
+      61, 62, 63, 64, 65, 66, 71, 72, 73, 74, 77, 80, 81,-7
+    )) + x4030 * (x4028 %in% c(
+      61, 62, 63, 64, 65, 66, 71, 72, 73, 74, 77, 80, 81,-7
+    ))
+  ),
+  equity = stocks + stmutf + 0.5 * comutf + omutf +    (x6551 + x6552 + x6553 + x6554) * ((x6555 == 1) + (x6555 %in% c(3, 30)) * (pmax(0, x6556) / 10000)) +
+    (x6559 + x6560 + x6561 + x6562) * ((x6563 == 1) + (x6563 %in% c(3, 30)) * (pmax(0, x6564) / 10000)) +
+    (x6567 + x6568 + x6569 + x6570) * ((x6571 == 1) + (x6571 %in% c(3, 30)) * (pmax(0, x6572) / 10000)) +
+    annuit * ((x6581 == 1) + (x6581 %in% c(3, 30)) * (pmax(0, x6582) / 10000)) +
+    trusts * ((x6591 == 1) + (x6591 %in% c(3, 30)) * (pmax(0, x6592) / 10000)) +
+    (x6461 == 1) * x6462 * ((x6933 == 1) + (x6933 %in% c(3, 30)) * (pmax(0, x6934) / 10000)) +
+    (x6466 == 1) * x6467 * ((x6937 == 1) + (x6937 %in% c(3, 30)) * (pmax(0, x6938) / 10000)) +
+    (x6471 == 1) * x6472 * ((x6941 == 1) + (x6941 %in% c(3, 30)) * (pmax(0, x6942) / 10000)) +
+    (x6476 == 1) * x6477 * ((x6945 == 1) + (x6945 %in% c(3, 30)) * (pmax(0, x6946) / 10000)) +
+    x5604 * ((x6962 == 1) + (x6962 %in% c(3, 30)) * (pmax(0, x6963) / 10000)) +
+    x5612 * ((x6968 == 1) + (x6968 %in% c(3, 30)) * (pmax(0, x6969) / 10000)) +
+    x5620 * ((x6974 == 1) + (x6974 %in% c(3, 30)) * (pmax(0, x6975) / 10000)) +
+    x5628 * ((x6980 == 1) + (x6980 %in% c(3, 30)) * (pmax(0, x6981) / 10000)) +
+    x3730 * ((x7074 == 1) + (x7074 %in% c(3, 30)) * (pmax(0, x7075) / 10000)) +
+    x3736 * ((x7077 == 1) + (x7077 %in% c(3, 30)) * (pmax(0, x7078) / 10000)) +
+    x3742 * (x7080 == 1 + x7080 %in% c(3, 30)) * (pmax(0, x7081) / 10000) +
+    x3748 * (x7083 == 1 + x7083 %in% c(3, 30)) * (pmax(0, x7084) / 10000) +
+    x3754 * (x7086 == 1 + x7086 %in% c(3, 30)) * (pmax(0, x7087) / 10000) +
+    x3760 * (x7089 == 1 + x7089 %in% c(3, 30)) * (pmax(0, x7090) / 10000),
+  saveq = pmax(
+    0,
+    x3730 * (x7074 == 1 + x7074 %in% c(3)) * (pmax(0, x7075) / 10000) +
+      x3736 * (x7077 == 1 + x7077 %in% c(3)) * (pmax(0, x7078) / 10000) +
+      x3742 * (x7080 == 1 + x7080 %in% c(3)) * (pmax(0, x7081) / 10000) +
+      x3748 * (x7083 == 1 + x7083 %in% c(3)) * (pmax(0, x7084) / 10000) +
+      x3754 * (x7086 == 1 + x7086 %in% c(3)) * (pmax(0, x7087) / 10000) +
+      x3760 * (x7089 == 1 + x7089 %in% c(3)) * (pmax(0, x7090) / 10000)
+  ),
+  reteq = pmax(
+    0,
+    sum(x6551, x6552, x6553, x6554) * ((x6555 == 1) +
+                                         (x6555 %in% c(3, 30)) * (pmax(0, x6556) / 10000)) +
+      sum(x6559, x6560, x6561, x6562) * ((x6563 == 1) +
+                                           (x6563 %in% c(3, 30)) * (pmax(0, x6564) / 10000)) +
+      sum(x6567, x6568, x6569, x6570) * ((x6571 == 1) +
+                                           (x6571 %in% c(3, 30)) * (pmax(0, x6572) / 10000)) +
+      (x6461 == 1) * x6462 * ((x6933 == 1) + (x6933 %in% c(3, 30)) * (pmax(0, x6934) / 10000)) +
+      (x6466 == 1) * x6467 * ((x6937 == 1) + (x6937 %in% c(3, 30)) * (pmax(0, x6938) / 10000)) +
+      (x6471 == 1) * x6472 * ((x6941 == 1) + (x6941 %in% c(3, 30)) * (pmax(0, x6942) / 10000)) +
+      (x6476 == 1) * x6477 * ((x6945 == 1) + (x6945 %in% c(3, 30)) * (pmax(0, x6946) / 10000)) +
+      x5604 * ((x6962 == 1) + (x6962 %in% c(3, 30)) * (pmax(0, x6963) / 10000)) +
+      x5612 * ((x6968 == 1) + (x6968 %in% c(3, 30)) * (pmax(0, x6969) / 10000)) +
+      x5620 * ((x6974 == 1) + (x6974 %in% c(3, 30)) * (pmax(0, x6975) / 10000)) +
+      x5628 * ((x6980 == 1) + (x6980 %in% c(3, 30)) * (pmax(0, x6981) / 10000))
+  ),
+  retqliq = irakh + futpen,
+  fin = liq + cds + nmmf + stocks + bond + retqliq + savbnd +
+    cashli + othma + othfin,
+  vehic = pmax(0, x8166) + pmax(0, x8167) + pmax(0, x8168) + pmax(0, x8188) +
+    pmax(0, x2422) + pmax(0, x2506) + pmax(0, x2606) + pmax(0, x2623),
+  
+  mps = x604 + x614 + x623,
+  home = x716,
+  vac = x1705 * x1706 + x1805 * x1806 + x2002 + x2012,
+  farms = x513 + x526,
+  farmbus = ifelse(x507 > 0,
+                   ((x507 / 10000) * (x513 + x526 - x805 - x905 - x1005)
+                   ),
+                   0),
+  x805 = ifelse(x507 > 0, x805 * ((10000 - x507) / 10000), x805),
+  x808 = ifelse(x507 > 0, x808 * ((10000 - x507) / 10000), x808),
+  x813 = ifelse(x507 > 0, x813 * ((10000 - x507) / 10000), x813),
+  x905 = ifelse(x507 > 0, x905 * ((10000 - x507) / 10000), x905),
+  x908 = ifelse(x507 > 0, x908 * ((10000 - x507) / 10000), x908),
+  x913 = ifelse(x507 > 0, x913 * ((10000 - x507) / 10000), x913),
+  x1005 = ifelse(x507 > 0, x1005 * ((10000 - x507) / 10000), x1005),
+  x1008 = ifelse(x507 > 0, x1008 * ((10000 - x507) / 10000), x1008),
+  x1013 = ifelse(x507 > 0, x1013 * ((10000 - x507) / 10000), x1013),
+  farmbus = ifelse((x1103 == 1 & x507 > 0),
+                   farmbus - x1108 * (x507 / 10000),
+                   farmbus),
+  x1108 = ifelse(x507 > 0 &
+                   x1103 == 1, x1108 * ((10000 - x507) / 10000), x1108),
+  x1109 = ifelse(x507 > 0 &
+                   x1103 == 1, x1109 * ((10000 - x507) / 10000), x1109),
+  farmbus = ifelse(x1114 == 1,
+                   farmbus - x1119 * (x507 / 10000),
+                   farmbus),
+  x1119 = ifelse(x507 > 0 &
+                   x1114 == 1, x1119 * ((10000 - x507) / 10000), x1119),
+  x1120 = ifelse(x507 > 0 &
+                   x1114 == 1, x1120 * ((10000 - x507) / 10000), x1120),
+  farmbus = ifelse(x1125 == 1 & x507 > 0,
+                   farmbus - x1130 * (x507 / 10000),
+                   farmbus),
+  x1130 = ifelse(x507 > 0 &
+                   1125 == 1, x1130 * ((10000 - x507) / 10000), x1130),
+  x1131 = ifelse(x507 > 0 &
+                   1125 == 1, x1131 * ((10000 - x507) / 10000), x1131),
+  farmbus = ifelse(
+    x1136 > 0 & (x1108 + x1119 + x1130 > 0),
+    farmbus - x1136 * (x507 / 10000) * ((
+      x1108 * (x1103 == 1) +
+        x1119 * (x1114 == 1) +
+        x1130 * (x1125 == 1)
+    ) / (x1108 + x1119 + x1130)),
+    farmbus
+  ),
+  houses = pmax(0, x604 + x614 + x623 + x716) + ((10000 - pmax(0, x507)) / 10000) * (x513 + x526),
+  oresre = pmax(x1306, x1310) + pmax(x1325, x1329) + pmax(0, x1339) +
+    ifelse(
+      x1703 %in% c(12, 14, 21, 22, 25, 40, 41, 42, 43, 44, 49, 50, 52, 999),
+      pmax(0, x1706) * (x1705 / 10000),
+      0
+    ) +
+    ifelse(
+      x1803 %in% c(12, 14, 21, 22, 25, 40, 41, 42, 43, 44, 49, 50, 52, 999),
+      pmax(0, x1806) * (x1805 / 10000),
+      0
+    ) +
+    pmax(0, x2002),
+  nnresre = ifelse(
+    x1703 %in% c(1, 2, 3, 4, 5, 6, 7, 10, 11, 13, 15, 24, 45, 46, 47, 48, 51, 53,-7),
+    pmax(0, x1706) * (x1705 / 10000),
+    0
+  ) +
+    ifelse(
+      x1803 %in% c(1, 2, 3, 4, 5, 6, 7, 10, 11, 13, 15, 24, 45, 46, 47, 48, 51, 53,-7),
+      pmax(0, x1806) * (x1805 / 10000),
+      0
+    ) +
+    pmax(0, x2012) -
+    ifelse(
+      x1703 %in% c(1, 2, 3, 4, 5, 6, 7, 10, 11, 13, 15, 24, 45, 46, 47, 48, 51, 53,-7),
+      x1715 * (x1705 / 10000),
+      0
+    ) -
+    ifelse(
+      x1803 %in% c(1, 2, 3, 4, 5, 6, 7, 10, 11, 13, 15, 24, 45, 46, 47, 48, 51, 53,-7),
+      x1815 * (x1805 / 10000),
+      0
+    ) -
+    x2016,
+  bus = pmax(0, x3129) + pmax(0, x3124) - pmax(0, x3126) * (x3127 == 5) +
+    pmax(0, x3121) * (x3122 %in% c(1, 6)) +
+    pmax(0, x3229) + pmax(0, x3224) - pmax(0, x3226) * (x3227 == 5) +
+    pmax(0, x3221) * (x3222 %in% c(1, 6)) +
+    pmax(0, x3335) + farmbus +
+    pmax(0, x3408) + pmax(0, x3412) + pmax(0, x3416) + pmax(0, x3420) +
+    pmax(0, x3452) + pmax(0, x3428),
+  actbus = pmax(0, x3129) + pmax(0, x3124) - pmax(0, x3126) * (x3127 == 5) +
+    pmax(0, x3121) * (x3122 %in% c(1, 6)) +
+    pmax(0, x3229) + pmax(0, x3224) - pmax(0, x3226) * (x3227 == 5) +
+    pmax(0, x3221) * (x3222 %in% c(1, 6)) +
+    pmax(0, x3335) + farmbus,
+  nonactbus = pmax(0, x3408) + pmax(0, x3412) + pmax(0, x3416) + pmax(0, x3420) +
+    pmax(0, x3452) + pmax(0, x3428),
+  othnfin = x4022 + x4026 + x4030 - othfin + x4018,
+  nfin = vehic + houses + oresre + nnresre + bus + othnfin,
+  asset = fin + nfin,
+  heloc = ifelse(
+    x1108 + x1119 + x1130 >= 1,
+    x1108 * (x1103 == 1) + x1119 * (x1114 == 1) + x1130 * (x1125 == 1) +
+      pmax(0, x1136) * (x1108 * (x1103 == 1) + x1119 * (x1114 == 1) + x1130 * (x1125 == 1)) /
+      (x1108 + x1119 + x1130),
+    0
+  ),
+  mrthel = ifelse(
+    x1108 + x1119 + x1130 >= 1,
+    x805 + x905 + x1005 + x1108 * (x1103 == 1) + x1119 * (x1114 == 1) + x1130 * (x1125 == 1) +
+      pmax(0, x1136) * (x1108 * (x1103 == 1) + x1119 * (x1114 == 1) + x1130 * (x1125 == 1)) /
+      (x1108 + x1119 + x1130),
+    x805 + x905 + x1005 + .5 * pmax(0, x1136) * (houses > 0)
+  ),
+  nh_mort = mrthel - heloc,
+  homeeo = houses - mrthel,
+  othloc = ifelse((x1108 + x1119 + x1130) >= 1,
+                  x1108 * (x1103 != 1) + x1119 * (x1114 != 1) + x1130 * (x1125 != 1) +
+                    pmax(0, x1136) * (x1108 * (x1103 != 1) + x1119 * (x1114 != 1) + x1130 * (x1125 != 1)) / (x1108 + x1119 + x1130),
+                  ((houses <= 0) + 0.5 * (houses > 0)) * pmax(0, x1136)
+  ),
+  mort1 = ifelse(
+    x1703 %in% c(12, 14, 21, 22, 25, 40, 41, 42, 43, 44, 49, 50, 52, 53, 999),
+    x1715 * (x1705 / 10000),
+    0
+  ),
+  mort2 = ifelse(
+    x1803 %in% c(12, 14, 21, 22, 25, 40, 41, 42, 43, 44, 49, 50, 52, 53, 999),
+    x1815 * (x1805 / 10000),
+    0
+  ),
+  mort3 = 0,
+  resdbt = x1318 + x1337 + x1342 + mort1 + mort2 + x2006,
+  ccbal = pmax(0, x427) + pmax(0, x413) + pmax(0, x421) + pmax(0, x7575),
+  noccbal = ifelse((pmax(0, x427) + pmax(0, x413) + pmax(0, x421)) == 0, TRUE, FALSE),
+  bnpl = pmax(0, x443),
+  veh_inst = x2218 + x2318 + x2418 + x7169 + x2424 + x2519 + x2619 + x2625,
+  edn_inst = x7824 + x7847 + x7870 + x7924 + x7947 + x7970 + x7179 +
+    x2723 * (x2710 == 83) + x2740 * (x2727 == 83) +
+    x2823 * (x2810 == 83) + x2840 * (x2827 == 83) +
+    x2923 * (x2910 == 83) + x2940 * (x2927 == 83),
+  install = x2218 + x2318 + x2418 + x7169 + x2424 + x2519 + x2619 + x2625 + x7183 +
+    x7824 + x7847 + x7870 + x7924 + x7947 + x7970 + x7179 +
+    x1044 + x1215 + x1219 + bnpl,
+  
+  outpen1 = pmax(0, x11027) * (x11070 == 5),
+  outpen2 = pmax(0, x11127) * (x11170 == 5),
+  outpen4 = pmax(0, x11327) * (x11370 == 5),
+  outpen5 = pmax(0, x11427) * (x11470 == 5),
+  outpen3 = 0,
+  outpen6 = 0,
+  outpen = outpen1 + outpen2 + outpen3 + outpen4 + outpen5 + outpen6,
+  odebt = outpen1 + outpen2 + outpen4 + outpen5 +
+    pmax(0, x4010) + pmax(0, x4032),
+  debt = mrthel + resdbt + othloc + ccbal + install + odebt,
+  NETWORTH = asset - debt,
+  ent=x4106
+  
+)
+
+```
+
 ## Histograms of wealth
+
+> Make two histograms for: (a) the level of wealth (only plot up to the 95th percentile, otherwise the graph will be hard to read), (b) the logarithm of wealth.
+
+### The level of wealth
 
 ```{r}
 
@@ -96,10 +388,29 @@ hist1<-df%>%
   ggplot(mapping = aes(NETWORTH,weight = WGT)) + 
   geom_histogram(binwidth = 100000,
                  color = "white") +
-  labs(x = "Net Worth Histogram")
+  labs(x = "Net Worth Histogram") +
+  theme_bw()
 
 hist1
 
+# q_952<- wtd.quantile(df3$NETWORTH, q=0.95, weight = df3$wgts)
+
+
+# hist3 <- df3 %>%
+#   filter(NETWORTH < q_952) %>%
+#   ggplot(mapping = aes(NETWORTH, weight = wgts)) +
+#   geom_histogram(binwidth = 100000,
+#                  color = "white") +
+#   labs(x = "Net Worth Histogram")
+# 
+# hist3
+
+
+```
+
+### The logarithm of wealth
+
+```{r}
 ## (b) the logarithm of wealth.
 
 # Make hist up to 95th perc
@@ -109,122 +420,153 @@ hist2<-df%>%
   ggplot(mapping = aes(ln_networth,weight = WGT)) + 
   geom_histogram(binwidth = 1,
                  color = "white") +
-  labs(x = "Log Net Worth Histogram")
+  labs(x = "Log Net Worth Histogram") +
+  theme_bw()
 
 hist2
 ```
 
 ## Wealth shares
 
+> Make a table with the wealth shares of (a) the bottom 50 percent, (b) the next 40 percent, (c) the next 9 percent, (d) the top 1 percent, (e) the top 0.1 percent of households in the sample. At the end, your answers to question 2 and 6 can be summarized in a table like Table 1 below.
+>
+> \
+> Let's assess what fraction of people in different parts of the wealth distribution are "en- trepreneurs" broadly defined. To this end use the variable X4106. For each of the wealth groups in question 2, calculate the fraction of people who are "entrepreneurs". Add your answer to Table 1.
+
 ```{r}
-## Q2: Make a table with the wealth shares of 
-# (a) the bottom 50 percent, 
-# (b) the next 40 percent, 
-# (c) the next 9 percent, 
+## Q2: Make a table with the wealth shares of
+# (a) the bottom 50 percent,
+# (b) the next 40 percent,
+# (c) the next 9 percent,
 # (d) the top 1 percent,
 # (e) the top 0.1 percent of households in the sample.
 
 # Set up the quantile spacing needed for (a)-(e)
-quantiles_q2 = rbind(c(0,0.5),
-                  c(0.5,0.9),
-                  c(0.9,0.99),
-                  c(0.99,1),
-                  c(0.999,1))
+quantiles_q2 = rbind(c(0, 0.5),
+                     c(0.5, 0.9),
+                     c(0.9, 0.99),
+                     c(0.99, 1),
+                     c(0.999, 1))
 
 # Get total wealth to construct shares
-totalwealth = sum(df$NETWORTH*df$WGT)
+totalwealth = sum(df$NETWORTH * df$WGT)
 
 # Find wealth (and entrepeneur) share for each quantile
-wealth_share<-list()
-ent_share<-list()
+wealth_share <- list()
+ent_share <- list()
 
-for (i in 1:nrow(quantiles_q2)){
-quantile_space = quantiles_q2[i,]  
+for (i in 1:nrow(quantiles_q2)) {
+  quantile_space = quantiles_q2[i, ]
   
-wealth_lb<- wtd.quantile(df$NETWORTH, q=quantile_space[1], weight = df$WGT)
-wealth_ub<- wtd.quantile(df$NETWORTH, q=quantile_space[2], weight = df$WGT)
-
-wealth_sample<-df%>%
-  # extract the relevant sample
-  filter(NETWORTH>wealth_lb)%>%
-  filter(NETWORTH<wealth_ub)
-
-# Wealth share of that group  
-wealth_share [[i]]= sum(wealth_sample$NETWORTH*wealth_sample$WGT) / totalwealth
+  wealth_lb <-
+    wtd.quantile(df$NETWORTH, q = quantile_space[1], weight = df$WGT)
+  wealth_ub <-
+    wtd.quantile(df$NETWORTH, q = quantile_space[2], weight = df$WGT)
   
-# No. entrepeneurs in that group
-ent_sample<-wealth_sample%>%
-  filter(OCCAT1==2)
-
-ent_share [[i]]= nrow(ent_sample)/nrow(wealth_sample)
+  wealth_sample <- df %>%
+    # extract the relevant sample
+    filter(NETWORTH > wealth_lb) %>%
+    filter(NETWORTH < wealth_ub)
+  
+  # Wealth share of that group
+  wealth_share [[i]] = sum(wealth_sample$NETWORTH * wealth_sample$WGT) / totalwealth
+  
+  # No. entrepeneurs in that group
+  ent_sample <- wealth_sample %>%
+    filter(ent == 2)
+  
+  ent_share [[i]] = nrow(ent_sample) / nrow(wealth_sample)
 }
 
-# Construct table 
-table_shares <- cbind(unlist(wealth_share),unlist(ent_share))
+# Construct table
+table_shares <-
+  data.frame(list(
+    "Group" = c("Bottom 50%", "50%-90%","90%-99%","top 1%", "top 0.1%"),
+    "Wealth share" = unlist(wealth_share),
+    "Number of entrepreneurs in group" = unlist(ent_share)
+  ))
+names(table_shares) <- c("Group", "Wealth share", "Proportion of group who are entrepreneurs")
+knitr::kable(table_shares, digits = 2)
 ```
 
 ## The quantile function
 
+> Plot the quantile function (you will likely have to cut the y-axis to make it readable due to the "dwarves and giants" feature).
+
 ```{r}
 ## Q3: Plot the quantile function
 
-# Choose number of points to fit to 
-quantiles_q3 <-(seq(0, 1, by = 0.01))
+# Choose number of points to fit to
+quantiles_q3 <- (seq(0, 1, by = 0.01))
 
-# Find quantile at each point (using the weights) 
-quantile_function<-cbind(quantiles_q3,wtd.quantile(df$NETWORTH, q=quantiles_q3, weight = df$WGT))%>%
-  as_tibble%>%
-  rename(quantile=quantiles_q3)%>%
-  rename(value=V2)
+
+# Find quantile at each point (using the weights)
+quantile_function <-
+  list(
+    "quantiles" = quantiles_q3,
+    "value" = wtd.quantile(df$NETWORTH, q = quantiles_q3, weight = df$WGT)
+  ) %>%
+  as_tibble
 
 # Create the plot
-quantile_plot<-quantile_function%>%
-  filter(quantile<0.95)%>%
-  filter(quantile>0.05)%>%
-  ggplot(aes(x=quantile,y=value))+
-  geom_line()+
+quantile_plot <- quantile_function %>%
+  filter(quantiles < 0.95) %>%
+  filter(quantiles > 0.05) %>%
+  ggplot(aes(x = quantiles, y = value)) +
+  geom_line() +
   theme_bw()
 
 # Alternate way to do all this manually by summing weights
-quantile_function2<-df%>%
-  arrange((NETWORTH))%>%
-  mutate(cum_sum = cumsum(WGT))%>%
-  mutate(WGT_TOTAL = sum(WGT))%>%
-  mutate(quantile=cum_sum/WGT_TOTAL)%>%
-  select(quantile,NETWORTH)
+quantile_function2 <- df %>%
+  arrange((NETWORTH)) %>%
+  mutate(cum_sum = cumsum(WGT)) %>%
+  mutate(WGT_TOTAL = sum(WGT)) %>%
+  mutate(quantile = cum_sum / WGT_TOTAL) %>%
+  select(quantile, NETWORTH)
 
-quantile_plot2<-quantile_function2%>%
-  filter(quantile<0.95)%>%
-  filter(quantile>0.05)%>%
-  ggplot(aes(x=quantile,y=NETWORTH))+
-  geom_line()+
+quantile_plot2 <- quantile_function2 %>%
+  filter(quantile < 0.95) %>%
+  filter(quantile > 0.05) %>%
+  ggplot(aes(x = quantile, y = NETWORTH)) +
+  geom_line() +
   theme_bw()
 
-# They look pretty similar 
+# They look pretty similar
 quantile_plot
-quantile_plot2
+#quantile_plot2
 
 
 ```
 
 ## The Lorenz curve
 
+> Plot the Lorenz curve.
+
 ```{r}
 
 
 ## Q4: Plot the Lorenz curve
 
+
 # That was easy
-lorenz(df$NETWORTH, weighting = df$WGT, z = NULL, na.rm = TRUE,
-       lcx = "Income share", lcy = "Population share",
-       lctitle = "Lorenz curve")
+lorenz(
+  df$NETWORTH,
+  weighting = df$WGT,
+  z = NULL,
+  na.rm = TRUE,
+  lcx = "Income share",
+  lcy = "Population share",
+  lctitle = "Lorenz curve"
+)
 
 ```
 
-## Entrepreneurs
+## Power law distribution
+
+> For the wealth above the 90th percentile, plot $\log(1 − F (w))$ against $\log w$ where $F (w)$ is the cumulative distribution function of wealth $w$. Figure 1 plots the corresponding graph for the 2007 SCF. If the distribution had an exact Pareto tail, this should be a straight line. The plot you will generate will most likely have the feature that the Pareto relationship breaks down for high enough wealth levels. Why?
 
 ```{r}
-## Q5:For the wealth above the 90th percentile, plot log(1 − F (w)) against log w 
+## Q5:For the wealth above the 90th percentile, plot log(1 − F (w)) against log w
 # where F (w) is the cumulative distribution function of wealth w.
 
 # Extract data for the top 10%
@@ -251,3 +593,15 @@ plot_q5<-wealth_top10%>%
 
 plot_q5
 ```
+
+## The problem with surveys {.appendix}
+
+### Representativeness {.appendix}
+
+### Missingness {.appendix}
+
+### Respondent burden {.appendix}
+
+### Bad respondents {.appendix}
+
+### 
