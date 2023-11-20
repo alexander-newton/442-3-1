@@ -572,6 +572,8 @@ lorenz(
 
 > For the wealth above the 90th percentile, plot $\log(1 − F (w))$ against $\log w$ where $F (w)$ is the cumulative distribution function of wealth $w$. Figure 1 plots the corresponding graph for the 2007 SCF. If the distribution had an exact Pareto tail, this should be a straight line. The plot you will generate will most likely have the feature that the Pareto relationship breaks down for high enough wealth levels. Why?
 
+The relationship likely breaks down at high levels because the number of samples relative to the size of the population decreases - even accounting for the oversampling conducted by the FRB.
+
 ```{r}
 ## Q5:For the wealth above the 90th percentile, plot log(1 − F (w)) against log w
 # where F (w) is the cumulative distribution function of wealth w.
